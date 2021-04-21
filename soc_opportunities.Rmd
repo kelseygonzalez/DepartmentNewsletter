@@ -1,0 +1,59 @@
+---
+title: "New soc opportunities this week"
+output: blastula::blastula_email
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = FALSE,
+                      message = FALSE)
+```
+
+Hi everyone, 
+
+Peter, Tori and I are experimenting with different formats that will work best for the socgrad opportunity spreadsheet(s) and listserv. In the meantime, checkout these awesome opportunities that are in the spreadsheet: 
+
+```{r load-data}
+pacman::p_load(googlesheets4, glue, lubridate, tidyverse)
+
+sheet <- read_sheet("https://docs.google.com/spreadsheets/d/1C5UhScMadiYUpcAkJYDfHS28KY-qmP3o9BTyevA5vfQ/edit#gid=0") 
+
+sheet <- sheet %>%
+  mutate(`Date Added` = ymd(`Date Added`),
+    `Deadline or Event Date` = ymd(`Deadline or Event Date`),
+    Description = str_remove(Description, "^[:blank:]*$"),
+    Description = str_remove(Description, "^\n$"),
+    across(where(is.character), ~ ifelse(is.na(.x), "", .x))) %>%
+  filter(
+    `Date Added` > Sys.Date() - 7,
+         `Deadline or Event Date` > Sys.Date())
+```
+
+
+```{r def-text}
+text <- function(sheet, type){
+  cat(glue("<h2>{type}</h2><br>"))
+  type <- enquo(type)
+
+  texty <- sheet %>% 
+    filter(Type == !!type) %>% 
+    mutate(text = glue("<p><h4>{Name}, {Organization}</h4></p>
+                       <p><small>{Description}</p></small>
+                       <a href='{Link}'>{format(`Deadline or Event Date`, '%b %d, %Y')}</a><br><br>")) %>% 
+    arrange(`Deadline or Event Date`) %>% 
+    pull(text)
+  cat(texty)
+}
+```
+
+```{r loop-results, results = "asis"}
+
+# edit ordering of report headers using base R syntax
+ordering <- c("CFP/Conferences","Talks","Grants and Fellowships","Internships and Non-Ac Jobs","Academic Jobs","Other Opportunities")
+titles <- unique(sheet$Type)
+titles <- titles[order(match(titles,ordering))]
+
+for (i in titles) text(sheet, i)
+```
+
+You can contribute to this list by adding to [bit.ly/UASocOpp](http://bit.ly/UASocOpp)
